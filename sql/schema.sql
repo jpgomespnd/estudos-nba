@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS teams (
 CREATE TABLE IF NOT EXISTS games (
     game_id   TEXT PRIMARY KEY,  -- texto, porque o ID começa com zeros: 0022500001
     season    TEXT NOT NULL,     -- exemplo: 2025-26
-    game_date TEXT NOT NULL      -- formato AAAA-MM-DD
+    game_date TEXT NOT NULL,     -- formato AAAA-MM-DD
+    -- 1 quando a API não aponta mandante: os dois times vêm marcados com "@".
+    is_neutral INTEGER NOT NULL CHECK (is_neutral IN (0, 1))
 );
 
 -- Uma linha por time em cada partida, ou seja, duas linhas por partida.
@@ -45,6 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_games_date ON games (game_date);
 CREATE INDEX IF NOT EXISTS idx_team_games_team ON team_games (team_id);
 
 -- Mostra cada partida em uma só linha, com mandante e visitante lado a lado.
+-- Partidas com is_neutral = 1 ficam de fora, porque não têm mandante.
 CREATE VIEW IF NOT EXISTS vw_jogos AS
 SELECT
     g.game_id,

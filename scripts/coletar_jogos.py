@@ -28,11 +28,12 @@ SQL_TIME = """
 """
 
 SQL_JOGO = """
-    INSERT INTO games (game_id, season, game_date)
-    VALUES (:game_id, :season, :game_date)
+    INSERT INTO games (game_id, season, game_date, is_neutral)
+    VALUES (:game_id, :season, :game_date, :is_neutral)
     ON CONFLICT (game_id) DO UPDATE SET
         season = excluded.season,
-        game_date = excluded.game_date
+        game_date = excluded.game_date,
+        is_neutral = excluded.is_neutral
 """
 
 # INSERT OR REPLACE troca a linha inteira quando a chave (jogo + time) já existe.
@@ -68,16 +69,22 @@ def buscar_temporada(temporada):
 
 def preparar_tabelas(jogos, temporada):
     """Separa a tabela da API nos formatos das tabelas games e team_games."""
+    # "LAL vs. GSW" indica mandante e "GSW @ LAL" indica visitante.
+    # Em quadra neutra, os dois times vêm com "@", então a partida fica sem mandante.
+    is_home = jogos["MATCHUP"].str.contains("vs.", regex=False).astype(int)
+    mandantes_na_partida = is_home.groupby(jogos["GAME_ID"]).transform("sum")
+
     partidas = (
-        jogos[["GAME_ID", "GAME_DATE"]]
+        jogos.assign(is_neutral=(mandantes_na_partida == 0).astype(int))[
+            ["GAME_ID", "GAME_DATE", "is_neutral"]
+        ]
         .drop_duplicates()
         .rename(columns={"GAME_ID": "game_id", "GAME_DATE": "game_date"})
         .assign(season=temporada)
     )
 
     times_no_jogo = jogos.rename(columns={"MIN": "minutes"}).rename(columns=str.lower)
-    # "LAL vs. GSW" indica mandante; "GSW @ LAL" indica visitante.
-    times_no_jogo["is_home"] = jogos["MATCHUP"].str.contains("vs.", regex=False).astype(int)
+    times_no_jogo["is_home"] = is_home
     times_no_jogo["won"] = (jogos["WL"] == "W").astype(int)
 
     return partidas.to_dict("records"), times_no_jogo.to_dict("records")
