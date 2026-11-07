@@ -2,7 +2,17 @@
 
 Projeto de estudo em ciência de dados: coletar dados da NBA, guardá-los em um banco SQL e treinar modelos de machine learning para prever o vencedor e o placar das partidas, comparando depois as previsões com os resultados reais.
 
-> **Status:** em início. Até agora, só a estrutura do repositório foi criada. Ainda não há código nem resultados.
+> **Status:** em início. O ambiente está pronto e a conexão com a API foi testada. Ainda não há modelo nem resultados.
+
+## Como rodar
+
+No Windows, com Python 3.12, a partir da pasta do projeto:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe scripts\testar_api.py
+```
 
 ## Objetivos
 
