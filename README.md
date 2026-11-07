@@ -12,7 +12,6 @@ Projeto de estudo em ciência de dados: coletar dados da NBA, guardá-los em um 
 
 ## Regras do projeto
 
-- **Sem vazamento de dados:** o modelo só usa informações que existiam antes do início do jogo.
 - **Execução local:** a `nba_api` tem limite de requisições e costuma bloquear serviços de nuvem, então tudo roda na máquina local, com pausas entre as chamadas.
 
 ## Etapas planejadas
