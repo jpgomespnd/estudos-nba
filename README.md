@@ -2,7 +2,7 @@
 
 Projeto de estudo em ciência de dados: coletar dados da NBA, guardá-los em um banco SQL e treinar modelos de machine learning para prever o vencedor e o placar das partidas, comparando depois as previsões com os resultados reais.
 
-> **Status:** em início. O ambiente está pronto e a conexão com a API foi testada. Ainda não há modelo nem resultados.
+> **Status:** em andamento. O banco de dados e a coleta estão prontos e validados. Ainda não há modelo nem resultados de previsão.
 
 ## Como rodar
 
@@ -12,7 +12,24 @@ No Windows, com Python 3.12, a partir da pasta do projeto:
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 .venv\Scripts\python.exe scripts\testar_api.py
+.venv\Scripts\python.exe scripts\coletar_jogos.py
+.venv\Scripts\python.exe scripts\validar_dados.py
 ```
+
+O banco é gerado em `data/nba.db` e não vai para o repositório, porque os scripts conseguem recriá-lo.
+
+## Dados
+
+Temporadas regulares de 2021-22 a 2025-26: 6.150 partidas, guardadas em SQLite.
+
+| Tabela | Conteúdo |
+|---|---|
+| `teams` | Os 30 times |
+| `games` | Uma linha por partida |
+| `team_games` | Uma linha por time em cada partida, com as estatísticas do jogo |
+| `vw_jogos` | Visão com mandante e visitante na mesma linha |
+
+**Limitação conhecida:** em 10 partidas de 2024-25 e 2025-26, a API não aponta mandante, e elas ficam marcadas com `is_neutral = 1`. Nas temporadas anteriores nenhuma partida vem assim, então jogos disputados em quadra neutra podem aparecer com um mandante apenas nominal.
 
 ## Objetivos
 
