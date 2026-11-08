@@ -1,26 +1,24 @@
-"""Confere se os dados do banco fazem sentido.
-
-Cada regra é uma consulta que procura dados ERRADOS: se ela não devolve nenhuma
-linha, a regra passou. O programa termina com erro se alguma regra falhar.
-
-Como rodar, a partir da pasta do projeto:
-    .venv\\Scripts\\python.exe scripts\\validar_dados.py
-"""
+"""Checagens de consistência do banco. Cada consulta procura linhas erradas."""
 
 import sys
 
 from banco import conectar
+from temporadas import TEMPORADAS_COMPLETAS
+
+COMPLETAS = ", ".join(f"'{t}'" for t in TEMPORADAS_COMPLETAS)
 
 CHECAGENS = {
-    "Cada temporada tem 1230 partidas": """
+    "Temporadas completas têm 1230 partidas": f"""
         SELECT season FROM games
+        WHERE season IN ({COMPLETAS})
         GROUP BY season
         HAVING COUNT(*) <> 1230
     """,
-    "Cada time joga 82 vezes por temporada": """
+    "Nas temporadas completas cada time joga 82 vezes": f"""
         SELECT g.season, t.team_id
         FROM team_games AS t
         JOIN games AS g ON g.game_id = t.game_id
+        WHERE g.season IN ({COMPLETAS})
         GROUP BY g.season, t.team_id
         HAVING COUNT(*) <> 82
     """,
@@ -78,19 +76,26 @@ CHECAGENS = {
         WHERE game_date NOT BETWEEN substr(season, 1, 4) || '-10-01'
                                 AND (CAST(substr(season, 1, 4) AS INTEGER) + 1) || '-06-30'
     """,
+    "Jogos da temporada atual estão encerrados no calendário": """
+        SELECT g.game_id
+        FROM games AS g
+        JOIN calendario AS c ON c.game_id = g.game_id
+        WHERE c.status <> 3 OR c.game_date <> g.game_date
+    """,
+    "O mandante do calendário é o mesmo dos jogos": """
+        SELECT v.game_id
+        FROM vw_jogos AS v
+        JOIN calendario AS c ON c.game_id = v.game_id
+        WHERE c.home_team_id <> v.home_team_id OR c.away_team_id <> v.away_team_id
+    """,
 }
 
 
 def executar_checagens(conexao):
-    """Devolve um dicionário com o número de linhas erradas de cada regra."""
-    return {
-        nome: len(conexao.execute(consulta).fetchall())
-        for nome, consulta in CHECAGENS.items()
-    }
+    return {nome: len(conexao.execute(consulta).fetchall()) for nome, consulta in CHECAGENS.items()}
 
 
 def mostrar_resumo(conexao):
-    """Mostra números gerais e a referência simples de vitórias do mandante."""
     consulta = """
         SELECT
             g.season,
@@ -108,7 +113,7 @@ def mostrar_resumo(conexao):
     print("\nTemporada | Partidas | Neutras | Início     | Fim        | Pontos/jogo | Mandante vence")
     for temporada, partidas, neutras, inicio, fim, pontos, mandante in conexao.execute(consulta):
         print(
-            f"{temporada}   | {partidas}     | {neutras:<7} | {inicio} | {fim} | "
+            f"{temporada}   | {partidas:<8} | {neutras:<7} | {inicio} | {fim} | "
             f"{pontos:<11} | {mandante}%"
         )
 

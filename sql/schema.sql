@@ -1,23 +1,16 @@
--- Esquema do banco. "IF NOT EXISTS" permite rodar este arquivo mais de uma vez.
-
 CREATE TABLE IF NOT EXISTS teams (
     team_id      INTEGER PRIMARY KEY,
     abbreviation TEXT NOT NULL UNIQUE,
     full_name    TEXT NOT NULL
 );
 
--- Uma linha por partida.
 CREATE TABLE IF NOT EXISTS games (
-    game_id   TEXT PRIMARY KEY,  -- texto, porque o ID começa com zeros: 0022500001
-    season    TEXT NOT NULL,     -- exemplo: 2025-26
-    game_date TEXT NOT NULL,     -- formato AAAA-MM-DD
-    -- 1 quando a API não aponta mandante: os dois times vêm marcados com "@".
+    game_id    TEXT PRIMARY KEY,
+    season     TEXT NOT NULL,
+    game_date  TEXT NOT NULL,
     is_neutral INTEGER NOT NULL CHECK (is_neutral IN (0, 1))
 );
 
--- Uma linha por time em cada partida, ou seja, duas linhas por partida.
--- Guarda o que aconteceu DURANTE o jogo. Esses números só poderão virar variáveis
--- do modelo depois de resumidos a partir de jogos anteriores à partida prevista.
 CREATE TABLE IF NOT EXISTS team_games (
     game_id    TEXT    NOT NULL REFERENCES games (game_id),
     team_id    INTEGER NOT NULL REFERENCES teams (team_id),
@@ -25,29 +18,37 @@ CREATE TABLE IF NOT EXISTS team_games (
     won        INTEGER NOT NULL CHECK (won IN (0, 1)),
     minutes    INTEGER NOT NULL,
     pts        INTEGER NOT NULL,
-    fgm        INTEGER NOT NULL,  -- arremessos de quadra convertidos
-    fga        INTEGER NOT NULL,  -- arremessos de quadra tentados
-    fg3m       INTEGER NOT NULL,  -- bolas de 3 convertidas
-    fg3a       INTEGER NOT NULL,  -- bolas de 3 tentadas
-    ftm        INTEGER NOT NULL,  -- lances livres convertidos
-    fta        INTEGER NOT NULL,  -- lances livres tentados
-    oreb       INTEGER NOT NULL,  -- rebotes ofensivos
-    dreb       INTEGER NOT NULL,  -- rebotes defensivos
-    reb        INTEGER NOT NULL,  -- total de rebotes
-    ast        INTEGER NOT NULL,  -- assistências
-    stl        INTEGER NOT NULL,  -- roubos de bola
-    blk        INTEGER NOT NULL,  -- tocos
-    tov        INTEGER NOT NULL,  -- desperdícios de bola
-    pf         INTEGER NOT NULL,  -- faltas pessoais
-    plus_minus INTEGER NOT NULL,  -- saldo de pontos na partida
+    fgm        INTEGER NOT NULL,
+    fga        INTEGER NOT NULL,
+    fg3m       INTEGER NOT NULL,
+    fg3a       INTEGER NOT NULL,
+    ftm        INTEGER NOT NULL,
+    fta        INTEGER NOT NULL,
+    oreb       INTEGER NOT NULL,
+    dreb       INTEGER NOT NULL,
+    reb        INTEGER NOT NULL,
+    ast        INTEGER NOT NULL,
+    stl        INTEGER NOT NULL,
+    blk        INTEGER NOT NULL,
+    tov        INTEGER NOT NULL,
+    pf         INTEGER NOT NULL,
+    plus_minus INTEGER NOT NULL,
     PRIMARY KEY (game_id, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS calendario (
+    game_id      TEXT    PRIMARY KEY,
+    season       TEXT    NOT NULL,
+    game_date    TEXT    NOT NULL,
+    home_team_id INTEGER NOT NULL REFERENCES teams (team_id),
+    away_team_id INTEGER NOT NULL REFERENCES teams (team_id),
+    is_neutral   INTEGER NOT NULL CHECK (is_neutral IN (0, 1)),
+    status       INTEGER NOT NULL CHECK (status IN (1, 2, 3))  -- 1 agendado, 2 em andamento, 3 encerrado
 );
 
 CREATE INDEX IF NOT EXISTS idx_games_date ON games (game_date);
 CREATE INDEX IF NOT EXISTS idx_team_games_team ON team_games (team_id);
 
--- Mostra cada partida em uma só linha, com mandante e visitante lado a lado.
--- Partidas com is_neutral = 1 ficam de fora, porque não têm mandante.
 CREATE VIEW IF NOT EXISTS vw_jogos AS
 SELECT
     g.game_id,

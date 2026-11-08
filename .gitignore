@@ -1,22 +1,13 @@
-# Ambiente virtual: cada pessoa recria o seu a partir do requirements.txt
 .venv/
-
-# Arquivos que o Python gera sozinho ao rodar
 __pycache__/
 *.py[cod]
-
-# Segredos e configurações locais
 .env
 
-# Dados baixados e banco local: podem ser gerados de novo pelos scripts
 data/
 *.db
 *.sqlite
 *.sqlite3
 
-# Pastas do Jupyter
 .ipynb_checkpoints/
-
-# Arquivos do sistema
 Thumbs.db
 Desktop.ini
