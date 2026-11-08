@@ -12,15 +12,17 @@ import sys
 from banco import conectar
 
 CHECAGENS = {
-    "Cada temporada tem 1230 partidas": """
+    "Cada temporada regular tem 1230 partidas": """
         SELECT season FROM games
+        WHERE season_type = 'Regular Season'
         GROUP BY season
         HAVING COUNT(*) <> 1230
     """,
-    "Cada time joga 82 vezes por temporada": """
+    "Cada time joga 82 vezes por temporada regular": """
         SELECT g.season, t.team_id
         FROM team_games AS t
         JOIN games AS g ON g.game_id = t.game_id
+        WHERE g.season_type = 'Regular Season'
         GROUP BY g.season, t.team_id
         HAVING COUNT(*) <> 82
     """,
@@ -102,6 +104,7 @@ def mostrar_resumo(conexao):
             ROUND(100.0 * AVG(v.home_won), 1)
         FROM games AS g
         LEFT JOIN vw_jogos AS v ON v.game_id = g.game_id
+        WHERE g.season_type = 'Regular Season'
         GROUP BY g.season
         ORDER BY g.season
     """
