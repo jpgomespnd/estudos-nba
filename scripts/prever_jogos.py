@@ -5,7 +5,7 @@ Uso: prever_jogos.py [dias]  (padrão: 7)
 """
 
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -24,8 +24,9 @@ from variaveis import (
 DIAS_PADRAO = 7
 CAMINHO_PREVISOES = RAIZ_DO_PROJETO / "previsoes" / "previsoes.csv"
 COLUNAS_CSV = [
-    "game_id", "season", "game_date", "casa", "fora", "feita_em",
-    "prob_casa", "prev_casa_pts", "prev_fora_pts", "casa_aproveitamento", "fora_aproveitamento",
+    "game_id", "data", "casa", "fora",
+    "chance_vitoria_casa", "pontos_previstos_casa",
+    "chance_vitoria_fora", "pontos_previstos_fora",
 ]
 
 SQL_PROXIMOS = """
@@ -79,6 +80,31 @@ def montar_proximos(conexao, df, inicio, fim):
     return proximos
 
 
+def em_porcentagem(probabilidade):
+    return (100 * probabilidade).map("{:.1f}%".format)
+
+
+def formatar(proximos, prob_casa, pontos):
+    return pd.DataFrame(
+        {
+            "game_id": proximos["game_id"],
+            "data": proximos["game_date"],
+            "casa": proximos["casa"],
+            "fora": proximos["fora"],
+            "chance_vitoria_casa": em_porcentagem(prob_casa),
+            "pontos_previstos_casa": pontos[:, 0].round().astype(int),
+            "chance_vitoria_fora": em_porcentagem(1 - prob_casa),
+            "pontos_previstos_fora": pontos[:, 1].round().astype(int),
+        }
+    )
+
+
+def ler_previsoes():
+    previsoes = pd.read_csv(CAMINHO_PREVISOES, dtype={"game_id": str})
+    previsoes["prob_casa"] = previsoes["chance_vitoria_casa"].str.rstrip("%").astype(float) / 100
+    return previsoes
+
+
 def atualizar_csv(novas):
     if CAMINHO_PREVISOES.exists():
         antigas = pd.read_csv(CAMINHO_PREVISOES, dtype={"game_id": str})
@@ -86,7 +112,7 @@ def atualizar_csv(novas):
         antigas = antigas[~antigas["game_id"].isin(novas["game_id"])]
         novas = pd.concat([antigas, novas])
     CAMINHO_PREVISOES.parent.mkdir(exist_ok=True)
-    novas.sort_values(["game_date", "game_id"])[COLUNAS_CSV].to_csv(CAMINHO_PREVISOES, index=False)
+    novas.sort_values(["data", "game_id"])[COLUNAS_CSV].to_csv(CAMINHO_PREVISOES, index=False)
 
 
 def main():
@@ -118,25 +144,13 @@ def main():
     proximos = proximos[~pouco_historico].copy()
 
     vencedor, placar = treinar(partidas)
-    proximos["prob_casa"] = vencedor.predict_proba(proximos[VARIAVEIS_MODELO])[:, 1].round(3)
-    proximos[["prev_casa_pts", "prev_fora_pts"]] = placar.predict(proximos[VARIAVEIS_MODELO]).round(1)
-    proximos["feita_em"] = datetime.now().isoformat(timespec="seconds")
-    proximos[["casa_aproveitamento", "fora_aproveitamento"]] = proximos[
-        ["casa_aproveitamento", "fora_aproveitamento"]
-    ].round(3)
+    prob_casa = pd.Series(vencedor.predict_proba(proximos[VARIAVEIS_MODELO])[:, 1], index=proximos.index)
+    previsoes = formatar(proximos, prob_casa, placar.predict(proximos[VARIAVEIS_MODELO]))
+    atualizar_csv(previsoes)
 
-    atualizar_csv(proximos)
-
-    print(f"Treino: {len(partidas)} partidas. Previsões para {hoje} a {hoje + timedelta(days=dias)}:\n")
-    for _, jogo in proximos.iterrows():
-        favorito = jogo["casa"] if jogo["prob_casa"] >= 0.5 else jogo["fora"]
-        chance = max(jogo["prob_casa"], 1 - jogo["prob_casa"])
-        print(
-            f"{jogo['game_date']}  {jogo['casa']} x {jogo['fora']}  "
-            f"{jogo['prev_casa_pts']:.0f} x {jogo['prev_fora_pts']:.0f}  "
-            f"favorito {favorito} ({100 * chance:.0f}%)"
-        )
-    print(f"\n{len(proximos)} previsões gravadas em {CAMINHO_PREVISOES.relative_to(RAIZ_DO_PROJETO)}")
+    print(f"Previsões de {hoje} a {hoje + timedelta(days=dias)}:\n")
+    print(previsoes.drop(columns="game_id").to_string(index=False))
+    print(f"\n{len(previsoes)} previsões gravadas em {CAMINHO_PREVISOES.relative_to(RAIZ_DO_PROJETO)}")
 
 
 if __name__ == "__main__":
